@@ -1,0 +1,16 @@
+hsv = rgb2hsv(img);              % double array, all bands in [0,1]
+h = hsv(:,:,1);                  % hue
+s = hsv(:,:,2);                  % saturation
+v = hsv(:,:,3);                  % value (brightness)
+ 
+% Type and range of each band
+class(h)                         % 'double'
+[min(min(h)) max(max(h))]        % min(min(...)) reduces over rows then cols
+ 
+% View each band as a grayscale image
+imshow(h), figure, imshow(s), figure, imshow(v)
+ 
+% Distribution of values in a band
+imhist(v)                        % e.g. the intensity distribution
+ 
+back = hsv2rgb(hsv);             % convert back to RGB to confirm round-trip
