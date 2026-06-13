@@ -1,23 +1,47 @@
+process_image("fruit_png\mixed_fruit1.png"); 
+process_image("fruit_png\mixed_fruit2.png"); 
+process_image("fruit_png\mixed_fruit3.png"); 
+process_image("fruit_png\fruit_tray.png");
+
+
+
+% TODO: 
+% 1. count fruits (it's just bwlabel(mask) and then find mask
+% 2. centroids (for loop over the components found by bwlabel then average.
+% Not sure how to plot that just yet but that sounds like a tomorrow
+% problem.) 
+% hopefully my apple transform isn't against the rules  
+
+
 function mask = extract_apples(img)
   %% Takes an HSV image and attempts to filter for the apple pixels %% 
-    RED_LOW = .90;
-    RED_HIGH = .04; 
-    SATURATION_LOW = .1;     
+    RED_LOW = .92;
+    RED_HIGH = .05; 
+    SATURATION_LOW = .35;     
+    VALUE_HIGH = .55; 
     img_h = img(:, :, 1);
     img_s = img(:, :, 2); 
+    img_v = img(:, :, 3); 
     mask = zeros(size(img, 1), size(img, 2)); 
     mask(( img_h > RED_LOW | img_h < RED_HIGH) & ...
-        img_s > SATURATION_LOW) = 1; 
+        img_s > SATURATION_LOW & img_v < VALUE_HIGH) = 1; 
+    mask = logical(mask); 
 end
 
 function mask = extract_oranges(img)
 %% Takes an HSV image and attempts to filter for the orange pixels %% 
 %% TODO: the color is just a rough estimate %% 
     ORANGE_LOW = .05;
-    ORANGE_HIGH = .10;
+    ORANGE_HIGH = .105;
+    SATURATION_LOW = .55; 
+    VALUE_LOW = .35; 
     img_h = img(:, :, 1);
+    img_s = img(:, :, 2); 
+    img_v = img(:, :, 3); 
     mask = zeros(size(img, 1), size(img, 2)); 
-    mask(ORANGE_LOW < img_h & img_h < ORANGE_HIGH) = 1; 
+    mask(ORANGE_LOW < img_h & img_h < ORANGE_HIGH & ...
+        img_s > SATURATION_LOW & img_v > VALUE_LOW) = 1; 
+    mask = logical(mask); 
 end
 
 function mask = extract_bananas(img)
@@ -25,11 +49,15 @@ function mask = extract_bananas(img)
 %% TODO: the color is just a rough estimate %% 
     YELLOW_LOW = .10;
     YELLOW_HIGH = .18; 
-    SATURATION = .9; 
+    SATURATION = .45; 
+    VALUE_LOW = .4; 
     img_h = img(:, :, 1);
     img_s = img(:, :, 2); 
+    img_v = img(:, :, 3); 
     mask = zeros(size(img, 1), size(img, 2)); 
-    mask(YELLOW_LOW < img_h & img_h < YELLOW_HIGH & img_s < SATURATION) = 1; 
+    mask(YELLOW_LOW < img_h & img_h < YELLOW_HIGH & ...
+        img_s > SATURATION & img_v > VALUE_LOW) = 1; 
+    mask = logical(mask); 
 end
 
 function avg_area = calculate_avg_area(mask)
@@ -41,7 +69,16 @@ function avg_area = calculate_avg_area(mask)
         area(k) = sum(sum(cc == k)); 
     end
     
-    avg_area = mean(area); 
+    area = area(area > 0.1 * max([area; 1])); 
+    if isempty(area)
+        avg_area = 0; 
+    else
+        avg_area = median(area); 
+    end
+end
+
+function r = adaptive_radius(avg_area, k)
+    r = max(1, floor(k * sqrt(avg_area / pi))); 
 end
 
 function mask = transform_apples(mask)
@@ -51,21 +88,9 @@ function mask = transform_apples(mask)
 
     avg_area = calculate_avg_area(mask); 
 
-    % After fiddling with hyperparameters: 
-    % img 1: 
-    % 10, 12, 6 Area = 26
-
-    % img 2: 
-    % 20, 25, 13. Area = 785
-
-    % img 3: 
-    % 20, 35, 14 area = 998
-    % 
-
-    % Everyone say thank you desmos for linear regression
-    dilate_radius = floor((0.011052 * avg_area) + 10.0232); 
-    erode_radius = floor((0.0219335 * avg_area) + 10.7741); 
-    dilate_radius_2 = floor((0.00849298 * avg_area) + 5.87873); 
+    dilate_radius = adaptive_radius(avg_area, 0.25); 
+    erode_radius = adaptive_radius(avg_area, 0.30); 
+    dilate_radius_2 = adaptive_radius(avg_area, 0.15); 
 
     % close the holes
     % since the erosion is larger than dilation, this also removes some
@@ -74,6 +99,8 @@ function mask = transform_apples(mask)
     mask = imdilate(mask, se);
     se = strel("disk", erode_radius); 
     mask = imerode(mask, se); 
+
+    mask = imfill(mask, "holes"); 
 
     % I know apples are generally round so redilate to get a round shape
     % back
@@ -90,14 +117,15 @@ function mask = transform_oranges(mask)
     
     avg_area = calculate_avg_area(mask); 
     
-    dilate_radius = 10; 
-    erode_radius = 15; 
+    dilate_radius = adaptive_radius(avg_area, 0.25); 
+    erode_radius = adaptive_radius(avg_area, 0.30); 
     
     se = strel("disk", dilate_radius); 
     mask = imdilate(mask, se);
     se = strel("disk", erode_radius); 
     mask = imerode(mask, se); 
-    se = strel("disk", 5); 
+    mask = imfill(mask, "holes"); 
+    se = strel("disk", adaptive_radius(avg_area, 0.15)); 
     mask = imdilate(mask, se); 
 
 end
@@ -111,14 +139,15 @@ function mask = transform_bananas(mask)
     
     avg_area = calculate_avg_area(mask); 
     
-    dilate_radius = 10; 
-    erode_radius = 15; 
+    dilate_radius = adaptive_radius(avg_area, 0.25); 
+    erode_radius = adaptive_radius(avg_area, 0.30); 
     
     se = strel("disk", dilate_radius); 
     mask = imdilate(mask, se);
     se = strel("disk", erode_radius); 
     mask = imerode(mask, se); 
-    se = strel("disk", 5); 
+    mask = imfill(mask, "holes"); 
+    se = strel("disk", adaptive_radius(avg_area, 0.15)); 
     mask = imdilate(mask, se); 
 
 end
@@ -162,17 +191,75 @@ function [apples, oranges, bananas] = transform(mask_apple, mask_orange, mask_ba
     bananas = transform_bananas(mask_banana); 
 end
 
-function display(img, mask)
+function out = split_clumps(mask, avg_area)
+    cc = bwconncomp(mask); 
+    stats = regionprops(cc, "Area"); 
+    areas = [stats.Area]; 
+    big = find(areas > 1.6 * avg_area); 
+    labels = labelmatrix(cc); 
+    bigmask = ismember(labels, big); 
+    out = mask & ~bigmask; 
+    if any(bigmask(:))
+        d = -bwdist(~bigmask); 
+        d(~bigmask) = -Inf; 
+        ws = watershed(d); 
+        bigmask(ws == 0) = 0; 
+        out = out | bigmask; 
+    end
+end
+
+function mask = filter_by_size(mask, avg_area)
+    cc = bwconncomp(mask); 
+    stats = regionprops(cc, "Area"); 
+    areas = [stats.Area]; 
+    keep = find(areas > 0.3 * avg_area & areas < 3.0 * avg_area); 
+    mask = ismember(labelmatrix(cc), keep); 
+end
+
+function [count, centroids] = count_fruit(mask)
+    avg_area = calculate_avg_area(mask); 
+    if avg_area == 0
+        count = 0; 
+        centroids = []; 
+        return; 
+    end
+    mask = split_clumps(mask, avg_area); 
+    mask = filter_by_size(mask, avg_area); 
+    cc = bwconncomp(mask); 
+    stats = regionprops(cc, "Centroid"); 
+    count = numel(stats); 
+    if count == 0
+        centroids = []; 
+    else
+        centroids = cat(1, stats.Centroid); 
+    end
+end
+
+function plot_centroids(c, color)
+    if ~isempty(c)
+        plot(c(:, 1), c(:, 2), "o", "Color", color, ...
+            "MarkerSize", 10, "LineWidth", 2); 
+    end
+end
+
+function display(img, mask_apple, mask_orange, mask_banana, ca, co, cb, na, no, nb)
 %% I had too many imtool windows and remembered this from videos 3c.%% 
 %% The image will reload when the program is run which is really nice %% 
 %% TODO: probably add orange and banana filters. 
+    combined = mask_apple | mask_orange | mask_banana; 
     subplot(2, 2, 1); 
     imshow(hsv2rgb(img)); % original image
     subplot(2, 2, 2); 
     imshow(img); % the hsv version
     subplot(2, 2, 3); 
-    imshow(mask); % just the mask
-    overlay(hsv2rgb(img), mask); % mask overlaid on original rgb image
+    imshow(combined); % just the mask
+    overlay(hsv2rgb(img), combined); % mask overlaid on original rgb image
+    hold on; 
+    plot_centroids(ca, "r"); 
+    plot_centroids(co, "g"); 
+    plot_centroids(cb, "y"); 
+    title(sprintf("Apples: %d   Oranges: %d   Bananas: %d", na, no, nb)); 
+    hold off; 
 end
 
 
@@ -184,20 +271,11 @@ function process_image(path)
     [mask_apples, mask_oranges, mask_bananas] = extract(img); 
     [mask_apples, mask_oranges, mask_bananas] = transform(mask_apples, mask_oranges, mask_bananas); 
 
-    display(img, mask_apples)
+    [na, ca] = count_fruit(mask_apples); 
+    [no, co] = count_fruit(mask_oranges); 
+    [nb, cb] = count_fruit(mask_bananas); 
+
+    figure; 
+    display(img, mask_apples, mask_oranges, mask_bananas, ca, co, cb, na, no, nb); 
 
 end
-
-process_image("fruit_png\mixed_fruit1.png"); 
-process_image("fruit_png\mixed_fruit2.png"); 
-process_image("fruit_png\mixed_fruit3.png"); 
-process_image("fruit_png\fruit_tray.png");
-
-
-
-% TODO: 
-% 1. count fruits (it's just bwlabel(mask) and then find mask
-% 2. centroids (for loop over the components found by bwlabel then average.
-% Not sure how to plot that just yet but that sounds like a tomorrow
-% problem.) 
-% hopefully my apple transform isn't against the rules  
