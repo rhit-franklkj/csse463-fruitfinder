@@ -1,7 +1,13 @@
-process_image("fruit_png\mixed_fruit1.png"); 
+% process_image("fruit_png\mixed_fruit1.png"); 
+process_image("fruit_png\mixed_fruit1.png");
+% process_image("fruit_png\mixed_fruit2.png"); 
 process_image("fruit_png\mixed_fruit2.png"); 
+% process_image("fruit_png\mixed_fruit3.png"); 
 process_image("fruit_png\mixed_fruit3.png"); 
-process_image("fruit_png\fruit_tray.png");
+
+% process_image("fruit_png\fruit_tray.png");
+
+process_image("fruit_png\fruit_tray.png"); 
 
 
 
@@ -31,9 +37,10 @@ end
 function mask = extract_oranges(img)
 %% Takes an HSV image and attempts to filter for the orange pixels %% 
 %% TODO: the color is just a rough estimate %% 
+    % imtool(img); 
     ORANGE_LOW = .05;
-    ORANGE_HIGH = .105;
-    SATURATION_LOW = .55; 
+    ORANGE_HIGH = .12;
+    SATURATION_LOW = .45; 
     VALUE_LOW = .35; 
     img_h = img(:, :, 1);
     img_s = img(:, :, 2); 
@@ -47,7 +54,7 @@ end
 function mask = extract_bananas(img)
 %% Takes an HSV image and attempts to filter for the banana pixels %% 
 %% TODO: the color is just a rough estimate %% 
-    YELLOW_LOW = .10;
+    YELLOW_LOW = .115; 
     YELLOW_HIGH = .18; 
     SATURATION = .45; 
     VALUE_LOW = .4; 
@@ -90,7 +97,7 @@ function mask = transform_apples(mask)
 
     dilate_radius = adaptive_radius(avg_area, 0.25); 
     erode_radius = adaptive_radius(avg_area, 0.30); 
-    dilate_radius_2 = adaptive_radius(avg_area, 0.15); 
+    dilate_radius_2 = adaptive_radius(avg_area, 0.2); 
 
     % close the holes
     % since the erosion is larger than dilation, this also removes some
