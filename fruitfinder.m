@@ -1,12 +1,6 @@
-% process_image("fruit_png\mixed_fruit1.png"); 
 process_image("fruit_png\mixed_fruit1.png");
-% process_image("fruit_png\mixed_fruit2.png"); 
 process_image("fruit_png\mixed_fruit2.png"); 
-% process_image("fruit_png\mixed_fruit3.png"); 
 process_image("fruit_png\mixed_fruit3.png"); 
-
-% process_image("fruit_png\fruit_tray.png");
-
 process_image("fruit_png\fruit_tray.png"); 
 
 
@@ -253,14 +247,18 @@ function display(img, mask_apple, mask_orange, mask_banana, ca, co, cb, na, no, 
 %% I had too many imtool windows and remembered this from videos 3c.%% 
 %% The image will reload when the program is run which is really nice %% 
 %% TODO: probably add orange and banana filters. 
-    combined = mask_apple | mask_orange | mask_banana; 
+    % combined = mask_apple | mask_orange | mask_banana; 
+    combined = zeros(size(img, 1), size(img, 2), 3); 
+    combined(:, :, 1) = mask_apple; 
+    combined(:, :, 2) = mask_orange; 
+    combined(:, :, 3) = mask_banana; 
     subplot(2, 2, 1); 
     imshow(hsv2rgb(img)); % original image
     subplot(2, 2, 2); 
     imshow(img); % the hsv version
     subplot(2, 2, 3); 
     imshow(combined); % just the mask
-    overlay(hsv2rgb(img), combined); % mask overlaid on original rgb image
+    overlay(hsv2rgb(img), mask_apple | mask_orange | mask_banana); % mask overlaid on original rgb image
     hold on; 
     plot_centroids(ca, "r"); 
     plot_centroids(co, "g"); 
