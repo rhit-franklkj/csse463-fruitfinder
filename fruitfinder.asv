@@ -174,8 +174,9 @@ function overlay(img, mask)
     temp(:, :, 2) = temp_s; 
     temp(:, :, 3) = temp_v; 
    
-    subplot(2, 2, 4); 
+    % subplot(2, 2, 4); 
     imshow(temp); 
+    % imtool(temp); 
 end
 
 function  [apples, oranges, bananas] = extract(img)
@@ -226,6 +227,7 @@ function [count, centroids] = count_fruit(mask)
     end
     mask = split_clumps(mask, avg_area); 
     mask = filter_by_size(mask, avg_area); 
+    imtool(mask); 
     cc = bwconncomp(mask); 
     stats = regionprops(cc, "Centroid"); 
     count = numel(stats); 
